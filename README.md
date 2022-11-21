@@ -14,6 +14,7 @@ docker compose up -d
 ```
 
 To set docker project to use this you need in includ ethe network in the projects docker-compose.yml 
+
 EG:
 ```YAML
 networks:
@@ -46,7 +47,6 @@ services:
       - default
     depends_on:
       - mysql
-      - php
 
   mysql:
     image: mariadb:10.5
@@ -54,8 +54,8 @@ services:
     ports:
       - 3306:3306
     environment:
-      MYSQL_DATABASE: craft
-      MYSQL_USER: craft
+      MYSQL_DATABASE: project
+      MYSQL_USER: project
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: secret
     volumes:
@@ -63,7 +63,8 @@ services:
     networks:
       - default
 
-
+  volumes:
+    data:
 ```
 
 Note where the nginx server is using both the 'dev' netowrk and the internal 'default' network.
