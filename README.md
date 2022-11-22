@@ -13,7 +13,9 @@ Then start the docker container with Docker Compose
 docker compose up -d
 ```
 
-To set docker project to use this you need in includ ethe network in the projects docker-compose.yml 
+You can access the Traefic dashboard: http://localhost:8080/
+
+To set docker project to use this you need in include the network in the projects docker-compose.yml 
 
 EG:
 ```YAML
@@ -67,4 +69,4 @@ services:
     data:
 ```
 
-Note where the nginx server is using both the 'dev' netowrk and the internal 'default' network.
+Note where the nginx server is using both the 'dev' network and the internal 'default' network.
