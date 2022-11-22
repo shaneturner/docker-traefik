@@ -1,0 +1,21 @@
+networks:
+  dev:
+    external: true
+
+services:
+  traefik:
+    image: traefik:2.9
+    command: 
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.dev.address=:80"
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    networks:
+      - dev
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
