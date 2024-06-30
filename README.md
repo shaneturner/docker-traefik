@@ -1,7 +1,7 @@
 # Docker Traefik
 Docker Compose Traefik DNS proxy for local dev. 
 
-Uses *.test for local domains 
+Uses *.localhost for local domains 
 
 Create a docker network first 
 ```bash
