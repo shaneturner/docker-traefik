@@ -77,6 +77,10 @@ services:
       - ./src:/var/www/html
     networks:
       - default
+
+volumes:
+  data:
+
 ```
 
 Note where the nginx server is using both the 'dev' network and the internal 'default' network.
