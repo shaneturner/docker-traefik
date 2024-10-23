@@ -13,7 +13,7 @@ Then start the docker container with Docker Compose
 docker compose up -d
 ```
 
-You can access the Traefic dashboard: http://localhost:8080/
+You can access the Traefic dashboard: http://localhost:8080/ or http://traefik.localhost
 
 To set docker project to use this you need in include the network in the projects docker-compose.yml 
 
@@ -25,48 +25,58 @@ networks:
 
 services:
   nginx:
-    build:
-      context: .
-      dockerfile: .docker/nginx.dockerfile
+    image: shaneturner/nginx:alpine
     init: true
+    restart: unless-stopped
     labels:
-      # REPLACE 'myproject' with the domain prefix you want to use
-      #
       # This is enableing treafik to proxy this service
       - "traefik.enable=true"
       # Here we have to define the URL
-      - "traefik.http.routers.myproject.rule=Host(`myproject.test`)"
+      - "traefik.http.routers.laravel.rule=Host(`laravel.localhost`)"
       # Here we are defining wich entrypoint should be used by clients to access this service
-      - "traefik.http.routers.myproject.entrypoints=dev"
+      - "traefik.http.routers.laravel.entrypoints=dev"
       # Here we define in wich network treafik can find this service
       - "traefik.docker.network=dev"
       # This is the port that traefik should proxy
-      - "traefik.http.services.myproject.loadbalancer.server.port=80"
+      - "traefik.http.services.laravel.loadbalancer.server.port=80"
     volumes:
       - ./src:/var/www/html
     networks:
       - dev
       - default
     depends_on:
-      - mysql
+      - postgres
+      - php
 
-  mysql:
-    image: mariadb:10.5
+  postgres:
+    image: postgres:17
     init: true
+    restart: unless-stopped
     ports:
-      - 3306:3306
+      - "5432"
     environment:
-      MYSQL_DATABASE: project
-      MYSQL_USER: project
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: secret
+      POSTGRES_DB: laravel
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    healthcheck:
+        test: ["CMD", "pg_isready", "-q", "-d", "laravel", "-U", "laravel"]
+        retries: 3
+        timeout: 5s
     volumes:
-      - data:/var/lib/mysql
+      - data:/var/lib/postgresql/data
     networks:
       - default
 
-  volumes:
-    data:
+  php:
+    image: shaneturner/php:8.3
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - default
 ```
 
 Note where the nginx server is using both the 'dev' network and the internal 'default' network.
