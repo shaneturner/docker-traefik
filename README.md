@@ -5,7 +5,7 @@ Uses *.localhost for local domains
 
 Create a docker network first 
 ```bash
-docker network create dev
+docker network create traefik
 ```
 
 Then start the docker container with Docker Compose
@@ -20,7 +20,7 @@ To set docker project to use this you need in include the network in the project
 EG:
 ```YAML
 networks:
-  dev:
+  traefik:
     external: true
 
 services:
@@ -36,13 +36,13 @@ services:
       # Here we are defining wich entrypoint should be used by clients to access this service
       - "traefik.http.routers.laravel.entrypoints=dev"
       # Here we define in wich network treafik can find this service
-      - "traefik.docker.network=dev"
+      - "traefik.docker.network=traefik"
       # This is the port that traefik should proxy
       - "traefik.http.services.laravel.loadbalancer.server.port=80"
     volumes:
       - ./src:/var/www/html
     networks:
-      - dev
+      - traefik
       - default
     depends_on:
       - postgres
@@ -83,4 +83,4 @@ volumes:
 
 ```
 
-Note where the nginx server is using both the 'dev' network and the internal 'default' network.
+Note where the nginx server is using both the 'traefik' network and the internal 'default' network.
