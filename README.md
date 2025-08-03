@@ -17,27 +17,33 @@ docker compose up -d
 
 You can access the Traefik dashboard at: http://localhost:8080/ or http://traefik.localhost
 
-## Configuration
+## Configuration Options
 
-### Basic HTTP Setup
-The current configuration provides:
+**Choose ONE of the following configuration methods:**
+
+### Option 1: Command-Line Configuration (Current Setup)
+The current `compose.yaml` uses command-line arguments for basic HTTP setup:
 - HTTP routing on port 80
 - Traefik dashboard accessible via port 8080 or traefik.localhost
 - Automatic service discovery via Docker labels
 - Debug logging enabled
+- **No config file needed**
 
-### SSL/HTTPS Setup
-For production or SSL-enabled environments:
+### Option 2: Configuration File (For SSL/HTTPS)
+For production or SSL-enabled environments, switch to file-based configuration:
 
-1. Uncomment the configuration volume mount in `compose.yaml`:
+1. **Remove or comment out** the `command:` section in `compose.yaml`
+2. **Uncomment** the configuration volume mount:
    ~~~yaml
    volumes:
      - /var/run/docker.sock:/var/run/docker.sock
      - ./config/:/etc/traefik/:ro  # Uncomment this line
    ~~~
 
-2. Ensure your `traefik.yaml` configuration file is placed in the `./config/` directory
-3. The included `traefik.yaml` provides HTTPS redirection and Cloudflare DNS challenge for SSL certificates
+3. Place your `traefik.yaml` configuration file in the `./config/` directory
+4. The included `traefik.yaml` provides HTTPS redirection and Cloudflare DNS challenge for SSL certificates
+
+**Important:** Do not use both command-line configuration AND config file imports simultaneously - choose one approach.
 
 ## Using Traefik with Your Projects
 
