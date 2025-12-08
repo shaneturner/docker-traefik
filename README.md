@@ -1,55 +1,103 @@
 # Docker Traefik
-Docker Compose Traefik v3 reverse proxy for local development. 
 
-Uses *.localhost for local domains with automatic HTTP routing.
+Docker Compose Traefik v3 reverse proxy for local development.
+
+Uses \*.localhost for local domains with automatic HTTP routing.
 
 ## Quick Start
 
 Create a docker network first:
-~~~bash
+
+```bash
 docker network create traefik
-~~~
+```
 
 Then start the Traefik container with Docker Compose:
-~~~bash
+
+```bash
 docker compose up -d
-~~~
+```
 
-You can access the Traefik dashboard at: http://localhost:8080/ or http://traefik.localhost
+You can access the Traefik dashboard at: http://traefik.localhost
 
-## Configuration Options
+## Configuration
 
-**Choose ONE of the following configuration methods:**
+This setup uses **file-based configuration** with separate config files for local development and production environments.
 
-### Option 1: Command-Line Configuration (Current Setup)
-The current `compose.yaml` uses command-line arguments for basic HTTP setup:
-- HTTP routing on port 80
-- Traefik dashboard accessible via port 8080 or traefik.localhost
-- Automatic service discovery via Docker labels
+### Local Development (Default)
+
+The default configuration uses `config/traefik-local.yaml`:
+
+- HTTP only on port 80
+- Traefik dashboard accessible at http://traefik.localhost
 - Debug logging enabled
-- **No config file needed**
+- No SSL/HTTPS
 
-### Option 2: Configuration File (For SSL/HTTPS)
-For production or SSL-enabled environments, switch to file-based configuration:
+**No changes needed** - just run `docker compose up -d`
 
-1. **Remove or comment out** the `command:` section in `compose.yaml`
-2. **Uncomment** the configuration volume mount:
-   ~~~yaml
+### Production Deployment
+
+To switch to production configuration with HTTPS and Let's Encrypt:
+
+1. **Update `compose.yaml`** - Swap the configuration file mounts:
+
+   ```yaml
    volumes:
      - /var/run/docker.sock:/var/run/docker.sock
-     - ./config/:/etc/traefik/:ro  # Uncomment this line
-   ~~~
+     # - ./config/traefik-local.yaml:/etc/traefik/traefik.yaml:ro  # Comment out local
+     - ./config/traefik-prod.yaml:/etc/traefik/traefik.yaml:ro # Uncomment production
+     - ./config/conf/:/etc/traefik/conf/:ro
+     - ./letsencrypt:/letsencrypt # Uncomment for certificate storage
+     - ./logs:/var/log/traefik # Uncomment for logging
+   ```
 
-3. Place your `traefik.yaml` configuration file in the `./config/` directory
-4. The included `traefik.yaml` provides HTTPS redirection and Cloudflare DNS challenge for SSL certificates
+2. **Enable port 443**:
 
-**Important:** Do not use both command-line configuration AND config file imports simultaneously - choose one approach.
+   ```yaml
+   ports:
+     - "80:80"
+     - "443:443" # Uncomment this line
+   ```
+
+3. **Set up Cloudflare DNS API Token**:
+
+   Create a `.env` file in the project root:
+
+   ```bash
+   CF_DNS_API_TOKEN=your_cloudflare_api_token_here
+   ```
+
+   Then uncomment the environment section in `compose.yaml`:
+
+   ```yaml
+   environment:
+     - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+   ```
+
+4. **Create `acme.json` with proper permissions**:
+
+   ```bash
+   touch letsencrypt/acme.json
+   chmod 600 letsencrypt/acme.json
+   ```
+
+5. **Restart Traefik**:
+   ```bash
+   docker compose down
+   docker compose up -d
+   ```
+
+### Configuration Files
+
+- `config/traefik-local.yaml` - Local development (HTTP only)
+- `config/traefik-prod.yaml` - Production (HTTPS with Cloudflare DNS challenge)
+- `config/conf/` - Directory for dynamic configuration files (routers, middlewares, services)
 
 ## Using Traefik with Your Projects
 
 To configure a Docker project to use this Traefik proxy, include the external network in your project's `docker-compose.yml`:
 
-~~~yaml
+```yaml
 networks:
   traefik:
     external: true
@@ -73,8 +121,8 @@ services:
     volumes:
       - ./src:/var/www/html
     networks:
-      - traefik    # External network for Traefik
-      - default    # Internal network for service communication
+      - traefik # External network for Traefik
+      - default # Internal network for service communication
     depends_on:
       - postgres
       - php
@@ -90,13 +138,13 @@ services:
       POSTGRES_USER: laravel
       POSTGRES_PASSWORD: secret
     healthcheck:
-        test: ["CMD", "pg_isready", "-q", "-d", "laravel", "-U", "laravel"]
-        retries: 3
-        timeout: 5s
+      test: ["CMD", "pg_isready", "-q", "-d", "laravel", "-U", "laravel"]
+      retries: 3
+      timeout: 5s
     volumes:
       - data:/var/lib/postgresql/data
     networks:
-      - default    # Only needs internal network
+      - default # Only needs internal network
 
   php:
     image: shaneturner/php:8.3
@@ -107,11 +155,11 @@ services:
     volumes:
       - ./src:/var/www/html
     networks:
-      - default    # Only needs internal network
+      - default # Only needs internal network
 
 volumes:
   data:
-~~~
+```
 
 ## Important Notes
 

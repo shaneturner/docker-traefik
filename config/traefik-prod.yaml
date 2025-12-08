@@ -1,18 +1,21 @@
 api:
   dashboard: true
   debug: true
+
 entryPoints:
-  http:
+  web:
     address: ":80"
     http:
       redirections:
-        entrypoint:
-          to: https
+        entryPoint:
+          to: websecure
           scheme: https
-  https:
+  websecure:
     address: ":443"
+
 serversTransport:
   insecureSkipVerify: true
+
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
@@ -24,10 +27,9 @@ providers:
 certificatesResolvers:
   cloudflare:
     acme:
-      storage: acme.json
+      storage: /letsencrypt/acme.json
       dnsChallenge:
         provider: cloudflare
-        delayBeforeCheck: 0
         resolvers:
           - "1.1.1.1:53"
           - "1.0.0.1:53"
@@ -35,5 +37,6 @@ certificatesResolvers:
 log:
   level: "INFO"
   filePath: "/var/log/traefik/traefik.log"
+
 accessLog:
   filePath: "/var/log/traefik/access.log"

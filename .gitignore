@@ -1,0 +1,8 @@
+# Let's Encrypt certificates
+letsencrypt/acme.json
+
+# Log files
+logs/*.log
+
+# Environment variables
+.env
