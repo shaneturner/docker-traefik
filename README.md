@@ -1,8 +1,8 @@
 # Docker Traefik
 
-Docker Compose Traefik v3 reverse proxy for local development.
+Docker Compose Traefik v3 reverse proxy supporting both local development and production environments with enhanced security via Docker Socket Proxy.
 
-Uses \*.localhost for local domains with automatic HTTP routing.
+Uses \*.localhost for local domains with automatic HTTP routing, or custom domains in production with HTTPS via Let's Encrypt.
 
 ## Quick Start
 
@@ -26,7 +26,14 @@ This setup uses **file-based configuration** with separate config files for loca
 
 ### Security
 
-This setup includes a **Docker Socket Proxy** (tecnativa/docker-socket-proxy) for enhanced security. The proxy sits between Traefik and the Docker socket, limiting Traefik's access to only the Docker API endpoints it needs (containers and networks), with all write operations disabled. This significantly reduces the attack surface if Traefik is compromised.
+This setup includes a **Docker Socket Proxy** ([wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy)) for enhanced security. This modern, memory-safe Go-based proxy sits between Traefik and the Docker socket, using regex-based access control to limit Traefik's access to only the Docker API endpoints it needs (containers, networks, and events), with all write operations disabled. This significantly reduces the attack surface if Traefik is compromised.
+
+**Key security features:**
+- Built in Go with zero dependencies (minimal attack surface)
+- Regex-based permission rules for fine-grained API access control
+- Hostname-based allowlisting (only the `traefik` container can connect)
+- Read-only filesystem and dropped capabilities
+- Socket watchdog for automatic recovery from Docker daemon issues
 
 ### Local Development (Default)
 
@@ -41,55 +48,50 @@ The default configuration uses `config/traefik-local.yaml`:
 
 ### Production Deployment
 
-To switch to production configuration with HTTPS and Let's Encrypt:
+#### Automated Setup (Recommended)
 
-1. **Update `compose.yaml`** - Swap the configuration file mounts:
+Run the production setup script:
 
-   ```yaml
-   volumes:
-     - /var/run/docker.sock:/var/run/docker.sock
-     # - ./config/traefik-local.yaml:/etc/traefik/traefik.yaml:ro  # Comment out local
-     - ./config/traefik-prod.yaml:/etc/traefik/traefik.yaml:ro # Uncomment production
-     - ./config/conf/:/etc/traefik/conf/:ro
-     - ./letsencrypt:/letsencrypt # Uncomment for certificate storage
-     - ./logs:/var/log/traefik # Uncomment for logging
-   ```
+```bash
+./setup-production.sh
+```
 
-2. **Enable port 443**:
+This automatically:
+- Switches from `traefik-local.yaml` to `traefik-prod.yaml`
+- Enables port 443 for HTTPS
+- Enables `letsencrypt` and `logs` volume mounts
+- Enables Cloudflare DNS environment variables
+- Creates `.env` from `.env.example` (if not exists)
+- Creates `letsencrypt/acme.json` with 600 permissions
+- Creates `logs/` directory
+- Verifies `traefik` network exists
+- Creates a timestamped backup of `compose.yaml`
 
-   ```yaml
-   ports:
-     - "80:80"
-     - "443:443" # Uncomment this line
-   ```
+After running the script:
 
-3. **Set up Cloudflare DNS API Token**:
-
-   Create a `.env` file in the project root:
-
+1. **Edit `.env`** and set your actual values:
    ```bash
+   DOMAIN=example.com
    CF_DNS_API_TOKEN=your_cloudflare_api_token_here
    ```
 
-   Then uncomment the environment section in `compose.yaml`:
-
-   ```yaml
-   environment:
-     - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
-   ```
-
-4. **Create `acme.json` with proper permissions**:
-
+2. **Start Traefik**:
    ```bash
-   touch letsencrypt/acme.json
-   chmod 600 letsencrypt/acme.json
-   ```
-
-5. **Restart Traefik**:
-   ```bash
-   docker compose down
    docker compose up -d
    ```
+
+#### Switch Back to Local
+
+To revert to local development configuration:
+
+```bash
+./setup-local.sh
+docker compose up -d
+```
+
+#### Manual Setup
+
+If you prefer to configure manually, see the detailed steps in `CLAUDE.md`.
 
 ### Configuration Files
 
@@ -114,8 +116,8 @@ services:
     labels:
       # Enable Traefik for this service
       - "traefik.enable=true"
-      # Define the domain/URL
-      - "traefik.http.routers.laravel.rule=Host(`laravel.localhost`)"
+      # Define the domain/URL (use ${DOMAIN:-localhost} for env-based domains)
+      - "traefik.http.routers.laravel.rule=Host(`laravel.${DOMAIN:-localhost}`)"
       # Specify the entrypoint (web for HTTP, websecure for HTTPS)
       - "traefik.http.routers.laravel.entrypoints=web"
       # Define which network Traefik should use to find this service

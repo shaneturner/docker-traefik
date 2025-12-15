@@ -6,35 +6,28 @@ networks:
 
 services:
   socket-proxy:
-    image: tecnativa/docker-socket-proxy:latest
+    image: wollomatic/socket-proxy:1
     container_name: traefik-socket-proxy
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+    mem_limit: 64M
+    read_only: true
+    cap_drop:
+      - ALL
     networks:
       - socket_proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - CONTAINERS=1  # Allow Traefik to access container information
-      - NETWORKS=1    # Allow Traefik to access network information
-      - SERVICES=0    # Disable services access (not needed for Docker provider)
-      - TASKS=0       # Disable tasks access (not needed for Docker provider)
-      - POST=0        # Disable POST requests (read-only)
-      - BUILD=0       # Disable build access
-      - COMMIT=0      # Disable commit access
-      - CONFIGS=0     # Disable configs access
-      - DISTRIBUTION=0  # Disable distribution access
-      - EXEC=0        # Disable exec access
-      - IMAGES=0      # Disable images access (not needed)
-      - INFO=0        # Disable info access
-      - NODES=0       # Disable nodes access
-      - PLUGINS=0     # Disable plugins access
-      - SECRETS=0     # Disable secrets access
-      - SESSION=0     # Disable session access
-      - SWARM=0       # Disable swarm access
-      - SYSTEM=0      # Disable system access
-      - VOLUMES=0     # Disable volumes access
+    command:
+      - '-loglevel=info'
+      - '-listenip=0.0.0.0'
+      - '-allowfrom=traefik'
+      - '-allowHEAD=/_ping'
+      - '-allowGET=/v1\..{1,2}/(version|containers/.*|networks/.*|events.*)'
+      - '-watchdoginterval=3600'
+      - '-stoponwatchdog'
+      - '-shutdowngracetime=5'
 
   traefik:
     image: traefik:3
@@ -62,5 +55,5 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik"
       - "traefik.http.routers.traefik.entrypoints=web"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-localhost}`)"
       - "traefik.http.routers.traefik.service=api@internal"

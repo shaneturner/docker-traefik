@@ -10,7 +10,14 @@ Docker Compose setup for Traefik v3 reverse proxy supporting dual environments (
 
 ### Security Layer
 
-The project uses a **Docker Socket Proxy** (tecnativa/docker-socket-proxy) to secure access to the Docker API. Traefik connects to the Docker daemon through this proxy, which limits access to only read-only operations on containers and networks. This prevents potential attackers from gaining full Docker API access if Traefik is compromised.
+The project uses a **Docker Socket Proxy** (wollomatic/socket-proxy) to secure access to the Docker API. This is a modern, memory-safe Go-based proxy with regex-based access control. Traefik connects to the Docker daemon through this proxy, which limits access to only read-only operations on containers, networks, and events. This prevents potential attackers from gaining full Docker API access if Traefik is compromised.
+
+**Key security features:**
+- Built in Go with zero dependencies (minimal attack surface)
+- Regex-based permission rules for fine-grained API access control
+- Hostname-based allowlisting (only the `traefik` container can connect)
+- Read-only filesystem and dropped capabilities
+- Socket watchdog for automatic recovery from Docker daemon issues
 
 ### Dual Configuration System
 
@@ -58,18 +65,45 @@ python3 -c "import yaml; yaml.safe_load(open('config/traefik-prod.yaml'))"
 
 ## Environment Switching
 
-### Local (Default)
+### Automated Setup (Recommended)
+
+**Switch to Production:**
+```bash
+./setup-production.sh
+```
+This script automatically:
+- Switches from `traefik-local.yaml` to `traefik-prod.yaml`
+- Enables port 443
+- Enables `letsencrypt` and `logs` volume mounts
+- Enables Cloudflare DNS environment variables
+- Creates `.env` from `.env.example` (if not exists)
+- Creates `letsencrypt/acme.json` with 600 permissions
+- Creates `logs/` directory
+- Verifies `traefik` network exists
+- Creates a timestamped backup of `compose.yaml`
+
+After running, edit `.env` to set your actual `DOMAIN` and `CF_DNS_API_TOKEN` values.
+
+**Switch to Local:**
+```bash
+./setup-local.sh
+```
+This script reverts all production changes back to local development configuration.
+
+### Manual Configuration
+
+#### Local (Default)
 - Uses `config/traefik-local.yaml` (active mount in compose.yaml)
 - Port 80 only
-- Dashboard at http://traefik.localhost
+- Dashboard at http://traefik.localhost (or http://traefik.${DOMAIN} if DOMAIN is set in .env)
 
-### Production
+#### Production
 Edit `compose.yaml` and:
 1. Comment out `traefik-local.yaml` mount, uncomment `traefik-prod.yaml`
 2. Uncomment port 443
 3. Uncomment `letsencrypt` and `logs` volume mounts
 4. Uncomment `environment` section with `CF_DNS_API_TOKEN`
-5. Create `.env` file with Cloudflare API token
+5. Create `.env` file with Cloudflare API token and DOMAIN
 6. Create `letsencrypt/acme.json` with `chmod 600` permissions
 
 ## Important Constraints
