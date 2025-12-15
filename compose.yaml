@@ -56,6 +56,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik"
+      # HTTP router (will redirect to HTTPS in production)
       - "traefik.http.routers.traefik.entrypoints=web"
       - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-localhost}`)"
       - "traefik.http.routers.traefik.service=api@internal"
+      # HTTPS router for production
+      - "traefik.http.routers.traefik-secure.entrypoints=websecure"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
