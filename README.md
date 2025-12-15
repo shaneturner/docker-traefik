@@ -34,6 +34,7 @@ This setup includes a **Docker Socket Proxy** ([wollomatic/socket-proxy](https:/
 - Hostname-based allowlisting (only the `traefik` container can connect)
 - Read-only filesystem and dropped capabilities
 - Socket watchdog for automatic recovery from Docker daemon issues
+- **Non-root execution**: Both Traefik and socket-proxy run as non-root users, preventing root-owned files in bind mounts
 
 ### Local Development (Default)
 
@@ -61,9 +62,11 @@ This automatically:
 - Enables port 443 for HTTPS
 - Enables `letsencrypt` and `logs` volume mounts
 - Enables Cloudflare DNS environment variables
-- Creates `.env` from `.env.example` (if not exists)
-- Creates `letsencrypt/acme.json` with 600 permissions
-- Creates `logs/` directory
+- Auto-detects your UID, GID, and Docker group ID
+- Creates `.env` from `.env.example` with detected IDs (if not exists)
+- Creates `letsencrypt/` directory with correct ownership
+- Creates `acme.json` with 600 permissions and correct ownership
+- Creates `logs/` directory with correct ownership
 - Verifies `traefik` network exists
 - Creates a timestamped backup of `compose.yaml`
 

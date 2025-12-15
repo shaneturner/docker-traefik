@@ -15,6 +15,20 @@ ACME_FILE="${LETSENCRYPT_DIR}/acme.json"
 echo "=== Traefik Production Setup ==="
 echo ""
 
+# Detect user and group IDs
+CURRENT_UID=$(id -u)
+CURRENT_GID=$(id -g)
+DOCKER_GROUP_ID=$(getent group docker | cut -d: -f3)
+
+if [ -z "$DOCKER_GROUP_ID" ]; then
+    echo "WARNING: Could not detect Docker group ID. Using default 999"
+    DOCKER_GROUP_ID=999
+fi
+
+echo "Detected user: $CURRENT_UID:$CURRENT_GID"
+echo "Detected Docker group: $DOCKER_GROUP_ID"
+echo ""
+
 # Check if compose.yaml exists
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "ERROR: compose.yaml not found at $COMPOSE_FILE"
@@ -59,18 +73,33 @@ else
         echo ""
         echo "Creating .env file from .env.example..."
         cp "$ENV_EXAMPLE" "$ENV_FILE"
+
+        # Add detected UID/GID values to .env
+        echo "" >> "$ENV_FILE"
+        echo "# User and group IDs (auto-detected)" >> "$ENV_FILE"
+        echo "UID=$CURRENT_UID" >> "$ENV_FILE"
+        echo "GID=$CURRENT_GID" >> "$ENV_FILE"
+        echo "DOCKER_GID=$DOCKER_GROUP_ID" >> "$ENV_FILE"
+        echo "SOCKET_UID=65534" >> "$ENV_FILE"
+
         echo "IMPORTANT: Edit .env and set your actual values:"
         echo "  - DOMAIN=your-domain.com"
         echo "  - CF_DNS_API_TOKEN=your_actual_token"
     else
         echo ""
         echo "WARNING: .env.example not found. Creating minimal .env file..."
-        cat > "$ENV_FILE" << 'EOF'
+        cat > "$ENV_FILE" << EOF
 # Domain name for Traefik dashboard and services
 DOMAIN=example.com
 
 # Cloudflare DNS API Token
 CF_DNS_API_TOKEN=your_cloudflare_api_token_here
+
+# User and group IDs (auto-detected)
+UID=$CURRENT_UID
+GID=$CURRENT_GID
+DOCKER_GID=$DOCKER_GROUP_ID
+SOCKET_UID=65534
 EOF
         echo "IMPORTANT: Edit .env and set your actual values!"
     fi
@@ -80,21 +109,25 @@ fi
 echo ""
 echo "Setting up Let's Encrypt directory..."
 mkdir -p "$LETSENCRYPT_DIR"
+chown "$CURRENT_UID:$CURRENT_GID" "$LETSENCRYPT_DIR"
 
 if [ -f "$ACME_FILE" ]; then
-    echo "acme.json already exists. Verifying permissions..."
+    echo "acme.json already exists. Verifying permissions and ownership..."
 else
     echo "Creating acme.json..."
     touch "$ACME_FILE"
 fi
 
 chmod 600 "$ACME_FILE"
-echo "acme.json permissions set to 600"
+chown "$CURRENT_UID:$CURRENT_GID" "$ACME_FILE"
+echo "acme.json permissions set to 600 and ownership set to $CURRENT_UID:$CURRENT_GID"
 
 # 9. Create logs directory
 echo ""
 echo "Setting up logs directory..."
 mkdir -p "$LOGS_DIR"
+chown "$CURRENT_UID:$CURRENT_GID" "$LOGS_DIR"
+echo "logs directory ownership set to $CURRENT_UID:$CURRENT_GID"
 
 # 10. Verify traefik network exists
 echo ""

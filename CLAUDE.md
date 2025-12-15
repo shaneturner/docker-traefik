@@ -19,6 +19,20 @@ The project uses a **Docker Socket Proxy** (wollomatic/socket-proxy) to secure a
 - Read-only filesystem and dropped capabilities
 - Socket watchdog for automatic recovery from Docker daemon issues
 
+### Non-Root User Configuration
+
+Both Traefik and the socket-proxy run as **non-root users** to prevent root-owned files in bind mounts and reduce security risks:
+
+- **Traefik**: Runs as the host user (UID/GID from .env, typically 1000:1000)
+- **Socket Proxy**: Runs as user 65534 (nobody) with the Docker group GID for socket access
+
+This ensures:
+- All files created in `letsencrypt/` and `logs/` directories are owned by your user account (not root)
+- Easy file access and cleanup without sudo
+- Reduced attack surface if containers are compromised
+
+The `setup-production.sh` script automatically detects your user ID, group ID, and Docker group ID, then adds them to `.env`.
+
 ### Dual Configuration System
 
 The project uses **separate Traefik configuration files** for different environments:
@@ -111,11 +125,13 @@ Edit `compose.yaml` and:
 - **Never use command-line flags** in compose.yaml - this setup uses file-based configuration exclusively
 - **Never mount both config files** simultaneously - only one should be active
 - **Never mount the Docker socket directly to Traefik** - always use the socket-proxy service for security
+- **Never run containers as root** - UID/GID must be set in `.env` to prevent root-owned files in bind mounts
 - Both config files use `endpoint: "tcp://socket-proxy:2375"` to connect to the Docker Socket Proxy
-- Port 8080 is NOT exposed - dashboard access is only via http://traefik.localhost
+- Port 8080 is NOT exposed - dashboard access is only via http://traefik.localhost (or configured domain)
 - The `traefik` network must exist externally before starting (`docker network create traefik`)
 - Production requires `acme.json` to have exactly 600 permissions or Let's Encrypt will fail
 - Production config has `debug: false` to reduce information disclosure (local uses `debug: true`)
+- The `.env` file must contain UID, GID, DOCKER_GID, and SOCKET_UID values (auto-detected by setup scripts)
 
 ## Service Integration Pattern
 
