@@ -24,6 +24,10 @@ You can access the Traefik dashboard at: http://traefik.localhost
 
 This setup uses **file-based configuration** with separate config files for local development and production environments.
 
+### Security
+
+This setup includes a **Docker Socket Proxy** (tecnativa/docker-socket-proxy) for enhanced security. The proxy sits between Traefik and the Docker socket, limiting Traefik's access to only the Docker API endpoints it needs (containers and networks), with all write operations disabled. This significantly reduces the attack surface if Traefik is compromised.
+
 ### Local Development (Default)
 
 The default configuration uses `config/traefik-local.yaml`:
@@ -112,8 +116,8 @@ services:
       - "traefik.enable=true"
       # Define the domain/URL
       - "traefik.http.routers.laravel.rule=Host(`laravel.localhost`)"
-      # Specify the entrypoint (http for basic setup)
-      - "traefik.http.routers.laravel.entrypoints=http"
+      # Specify the entrypoint (web for HTTP, websecure for HTTPS)
+      - "traefik.http.routers.laravel.entrypoints=web"
       # Define which network Traefik should use to find this service
       - "traefik.docker.network=traefik"
       # Specify the port that Traefik should proxy to
@@ -165,5 +169,5 @@ volumes:
 
 - The nginx service uses both the `traefik` network (for proxy access) and the `default` network (for internal service communication)
 - Services that don't need external access (like `postgres` and `php`) only use the `default` network
-- For HTTPS/SSL setups, change the entrypoint from `http` to `https` in your service labels
-- The current setup uses Traefik v3 with updated command-line syntax
+- For HTTPS/SSL setups, change the entrypoint from `web` to `websecure` in your service labels
+- The current setup uses Traefik v3 with file-based configuration

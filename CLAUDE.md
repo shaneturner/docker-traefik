@@ -4,9 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Docker Compose setup for Traefik v3 reverse proxy supporting dual environments (local development and production) with file-based configuration.
+Docker Compose setup for Traefik v3 reverse proxy supporting dual environments (local development and production) with file-based configuration and enhanced security via Docker Socket Proxy.
 
 ## Architecture
+
+### Security Layer
+
+The project uses a **Docker Socket Proxy** (tecnativa/docker-socket-proxy) to secure access to the Docker API. Traefik connects to the Docker daemon through this proxy, which limits access to only read-only operations on containers and networks. This prevents potential attackers from gaining full Docker API access if Traefik is compromised.
 
 ### Dual Configuration System
 
@@ -72,9 +76,12 @@ Edit `compose.yaml` and:
 
 - **Never use command-line flags** in compose.yaml - this setup uses file-based configuration exclusively
 - **Never mount both config files** simultaneously - only one should be active
+- **Never mount the Docker socket directly to Traefik** - always use the socket-proxy service for security
+- Both config files use `endpoint: "tcp://socket-proxy:2375"` to connect to the Docker Socket Proxy
 - Port 8080 is NOT exposed - dashboard access is only via http://traefik.localhost
 - The `traefik` network must exist externally before starting (`docker network create traefik`)
 - Production requires `acme.json` to have exactly 600 permissions or Let's Encrypt will fail
+- Production config has `debug: false` to reduce information disclosure (local uses `debug: true`)
 
 ## Service Integration Pattern
 
