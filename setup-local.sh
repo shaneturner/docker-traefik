@@ -61,13 +61,13 @@ sed -i 's/^      # - \.\/authelia\/config\/configuration-local\.yml:\/config\/co
 sed -i 's/^      - \.\/authelia\/config\/configuration-prod\.yml:\/config\/configuration\.yml:ro  # Uncomment for production$/      # - .\/authelia\/config\/configuration-prod.yml:\/config\/configuration.yml:ro  # Uncomment for production/' "$COMPOSE_FILE"
 
 # 9. Comment out Authelia SMTP environment variables
-sed -i 's/^        - SMTP_HOST=\${SMTP_HOST}$/        # - SMTP_HOST=\${SMTP_HOST}/' "$COMPOSE_FILE"
-sed -i 's/^        - SMTP_PORT=\${SMTP_PORT}$/        # - SMTP_PORT=\${SMTP_PORT}/' "$COMPOSE_FILE"
-sed -i 's/^        - SMTP_USERNAME=\${SMTP_USERNAME}$/        # - SMTP_USERNAME=\${SMTP_USERNAME}/' "$COMPOSE_FILE"
-sed -i 's/^        - SMTP_PASSWORD=\${SMTP_PASSWORD}$/        # - SMTP_PASSWORD=\${SMTP_PASSWORD}/' "$COMPOSE_FILE"
-sed -i 's/^        - SMTP_FROM=\${SMTP_FROM}$/        # - SMTP_FROM=\${SMTP_FROM}/' "$COMPOSE_FILE"
-sed -i 's/^        - ADMIN_EMAIL=\${ADMIN_EMAIL}$/        # - ADMIN_EMAIL=\${ADMIN_EMAIL}/' "$COMPOSE_FILE"
-sed -i 's/^        - DOMAIN=\${DOMAIN}$/        # - DOMAIN=\${DOMAIN}/' "$COMPOSE_FILE"
+sed -i 's/^      - SMTP_HOST=\${SMTP_HOST}$/      # - SMTP_HOST=\${SMTP_HOST}/' "$COMPOSE_FILE"
+sed -i 's/^      - SMTP_PORT=\${SMTP_PORT}$/      # - SMTP_PORT=\${SMTP_PORT}/' "$COMPOSE_FILE"
+sed -i 's/^      - SMTP_USERNAME=\${SMTP_USERNAME}$/      # - SMTP_USERNAME=\${SMTP_USERNAME}/' "$COMPOSE_FILE"
+sed -i 's/^      - SMTP_PASSWORD=\${SMTP_PASSWORD}$/      # - SMTP_PASSWORD=\${SMTP_PASSWORD}/' "$COMPOSE_FILE"
+sed -i 's/^      - SMTP_FROM=\${SMTP_FROM}$/      # - SMTP_FROM=\${SMTP_FROM}/' "$COMPOSE_FILE"
+sed -i 's/^      - ADMIN_EMAIL=\${ADMIN_EMAIL}$/      # - ADMIN_EMAIL=\${ADMIN_EMAIL}/' "$COMPOSE_FILE"
+sed -i 's/^      - DOMAIN=\${DOMAIN}$/      # - DOMAIN=\${DOMAIN}/' "$COMPOSE_FILE"
 
 echo ""
 echo "=== Local Development Setup Complete ==="

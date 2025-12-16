@@ -42,6 +42,38 @@ The project uses **separate Traefik configuration files** for different environm
 
 **Key principle**: Only ONE configuration file is mounted at a time via `compose.yaml`. Switch environments by commenting/uncommenting the appropriate volume mount.
 
+### Authelia Authentication
+
+The project integrates **Authelia** for Single Sign-On (SSO) and access control. Authelia protects the Traefik dashboard and can protect any service routed through Traefik.
+
+**Dual configuration system** (same pattern as Traefik):
+- `authelia/config/configuration-local.yml` - File-based notifications for local development
+- `authelia/config/configuration-prod.yml` - SMTP email notifications for production
+
+**Directory structure:**
+- `authelia/config/` - Configuration files (tracked in git except `users_database.yml`)
+- `authelia/secrets/` - Cryptographic secrets (gitignored, auto-generated)
+- `authelia/data/` - Runtime data and user database (gitignored)
+
+**Initial setup:**
+```bash
+./setup-authelia.sh
+```
+This script creates directories, generates secrets, and prompts for an admin user. It's environment-agnostic and only needs to run once.
+
+**Production requirements:**
+The `setup-production.sh` script automatically switches Authelia to production mode by:
+- Switching from `configuration-local.yml` to `configuration-prod.yml`
+- Enabling SMTP environment variables for email notifications
+- Requiring SMTP credentials in `.env` (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM, ADMIN_EMAIL)
+
+**Key features:**
+- Argon2id password hashing
+- Session-based authentication with Redis support (optional)
+- File-based user database (suitable for small teams)
+- 2FA support (TOTP)
+- Access control rules per domain/path
+
 ### Directory Structure
 
 - `config/conf/` - Dynamic Traefik configuration files (routers, middlewares, services)
@@ -87,22 +119,26 @@ python3 -c "import yaml; yaml.safe_load(open('config/traefik-prod.yaml'))"
 ```
 This script automatically:
 - Switches from `traefik-local.yaml` to `traefik-prod.yaml`
+- Switches from `authelia/configuration-local.yml` to `authelia/configuration-prod.yml`
 - Enables port 443
 - Enables `letsencrypt` and `logs` volume mounts
 - Enables Cloudflare DNS environment variables
+- Enables Authelia SMTP environment variables
 - Creates `.env` from `.env.example` (if not exists)
 - Creates `letsencrypt/acme.json` with 600 permissions
 - Creates `logs/` directory
 - Verifies `traefik` network exists
 - Creates a timestamped backup of `compose.yaml`
 
-After running, edit `.env` to set your actual `DOMAIN` and `CF_DNS_API_TOKEN` values.
+After running, edit `.env` to set your actual values:
+- `DOMAIN` and `CF_DNS_API_TOKEN` (for Traefik)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `ADMIN_EMAIL` (for Authelia)
 
 **Switch to Local:**
 ```bash
 ./setup-local.sh
 ```
-This script reverts all production changes back to local development configuration.
+This script reverts all production changes back to local development configuration (both Traefik and Authelia).
 
 ### Manual Configuration
 
@@ -114,24 +150,29 @@ This script reverts all production changes back to local development configurati
 #### Production
 Edit `compose.yaml` and:
 1. Comment out `traefik-local.yaml` mount, uncomment `traefik-prod.yaml`
-2. Uncomment port 443
-3. Uncomment `letsencrypt` and `logs` volume mounts
-4. Uncomment `environment` section with `CF_DNS_API_TOKEN`
-5. Create `.env` file with Cloudflare API token and DOMAIN
-6. Create `letsencrypt/acme.json` with `chmod 600` permissions
+2. Comment out `authelia/configuration-local.yml` mount, uncomment `authelia/configuration-prod.yml`
+3. Uncomment port 443
+4. Uncomment `letsencrypt` and `logs` volume mounts
+5. Uncomment `environment` section with `CF_DNS_API_TOKEN`
+6. Uncomment Authelia SMTP environment variables
+7. Create `.env` file with all required values (see `.env.example`)
+8. Create `letsencrypt/acme.json` with `chmod 600` permissions
 
 ## Important Constraints
 
 - **Never use command-line flags** in compose.yaml - this setup uses file-based configuration exclusively
-- **Never mount both config files** simultaneously - only one should be active
+- **Never mount both Traefik config files** simultaneously - only one should be active (local OR prod)
+- **Never mount both Authelia config files** simultaneously - only one should be active (local OR prod)
 - **Never mount the Docker socket directly to Traefik** - always use the socket-proxy service for security
 - **Never run containers as root** - UID/GID must be set in `.env` to prevent root-owned files in bind mounts
-- Both config files use `endpoint: "tcp://socket-proxy:2375"` to connect to the Docker Socket Proxy
+- **Never commit sensitive Authelia files** - `users_database.yml`, `secrets/`, and `data/` must be gitignored
+- Both Traefik config files use `endpoint: "tcp://socket-proxy:2375"` to connect to the Docker Socket Proxy
 - Port 8080 is NOT exposed - dashboard access is only via http://traefik.localhost (or configured domain)
 - The `traefik` network must exist externally before starting (`docker network create traefik`)
 - Production requires `acme.json` to have exactly 600 permissions or Let's Encrypt will fail
 - Production config has `debug: false` to reduce information disclosure (local uses `debug: true`)
 - The `.env` file must contain UID, GID, DOCKER_GID, and SOCKET_UID values (auto-detected by setup scripts)
+- Authelia secrets must have 600 permissions (auto-set by `setup-authelia.sh`)
 
 ## Service Integration Pattern
 

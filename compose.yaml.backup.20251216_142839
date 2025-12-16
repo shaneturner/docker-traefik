@@ -1,0 +1,113 @@
+networks:
+  traefik:
+    external: true
+  socket_proxy:
+    internal: true
+
+services:
+  socket-proxy:
+    image: wollomatic/socket-proxy:1
+    container_name: traefik-socket-proxy
+    user: "${SOCKET_UID:-65534}:${DOCKER_GID:-999}"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    mem_limit: 64M
+    read_only: true
+    cap_drop:
+      - ALL
+    networks:
+      - socket_proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - '-loglevel=info'
+      - '-listenip=0.0.0.0'
+      - '-allowfrom=traefik'
+      - '-allowHEAD=/_ping'
+      - '-allowGET=/v1\..{1,2}/(version|containers/.*|networks/.*|events.*)'
+      - '-watchdoginterval=3600'
+      - '-stoponwatchdog'
+      - '-shutdowngracetime=5'
+
+  traefik:
+    image: traefik:3
+    container_name: traefik
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"  # Uncomment for production
+    networks:
+      - traefik
+      - socket_proxy
+    volumes:
+      - ./config/traefik-local.yaml:/etc/traefik/traefik.yaml:ro
+      # - ./config/traefik-prod.yaml:/etc/traefik/traefik.yaml:ro  # Uncomment for production (and comment out local)
+      - ./config/conf/:/etc/traefik/conf/:ro
+      # - ./letsencrypt:/letsencrypt  # Uncomment for production
+      # - ./logs:/var/log/traefik  # Uncomment for production
+    # environment:  # Uncomment for production with Cloudflare DNS challenge
+    #   - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    depends_on:
+      - socket-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # HTTP router (will redirect to HTTPS in production)
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=authelia-auth@file"
+      # HTTPS router for production
+      - "traefik.http.routers.traefik-secure.entrypoints=websecure"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.middlewares=authelia-auth@file"
+
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    user: "${UID:-1000}:${GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - traefik
+    volumes:
+      - ./authelia/config/configuration-local.yml:/config/configuration.yml:ro
+      # - ./authelia/config/configuration-prod.yml:/config/configuration.yml:ro  # Uncomment for production
+      - ./authelia/config/users_database.yml:/config/users_database.yml:ro
+      - ./authelia/secrets:/secrets:ro
+      - ./authelia/data:/data
+    environment:
+      - TZ=${TZ:-UTC}
+      # Production SMTP (uncomment for production)
+      # - SMTP_HOST=${SMTP_HOST}
+      # - SMTP_PORT=${SMTP_PORT}
+      # - SMTP_USERNAME=${SMTP_USERNAME}
+      # - SMTP_PASSWORD=${SMTP_PASSWORD}
+      # - SMTP_FROM=${SMTP_FROM}
+      # - ADMIN_EMAIL=${ADMIN_EMAIL}
+      # - DOMAIN=${DOMAIN}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # HTTP router
+      - "traefik.http.routers.authelia.entrypoints=web"
+      - "traefik.http.routers.authelia.rule=Host(`authelia.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.authelia.service=authelia"
+      # HTTPS router (production)
+      - "traefik.http.routers.authelia-secure.entrypoints=websecure"
+      - "traefik.http.routers.authelia-secure.rule=Host(`authelia.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.authelia-secure.service=authelia"
+      - "traefik.http.routers.authelia-secure.tls=true"
+      - "traefik.http.routers.authelia-secure.tls.certresolver=cloudflare"
+      # Service definition
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+    depends_on:
+      - traefik
