@@ -6,3 +6,8 @@ logs/*.log
 
 # Environment variables
 .env
+
+# Authelia sensitive data
+authelia/config/users_database.yml
+authelia/secrets/
+authelia/data/

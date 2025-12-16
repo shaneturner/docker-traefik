@@ -1,0 +1,25 @@
+---
+# Authelia ForwardAuth Middleware Configuration
+# This middleware is available globally to all services via the @file provider
+
+http:
+  middlewares:
+    # Main authentication middleware - requires full 2FA
+    authelia-auth:
+      forwardAuth:
+        address: "http://authelia:9091/api/verify?rd=https://authelia.example.com"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "Remote-User"
+          - "Remote-Groups"
+          - "Remote-Name"
+          - "Remote-Email"
+
+    # Basic auth middleware - one-factor for less sensitive services
+    authelia-basic:
+      forwardAuth:
+        address: "http://authelia:9091/api/verify?auth=basic"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "Remote-User"
+          - "Remote-Groups"

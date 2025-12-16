@@ -1,0 +1,94 @@
+---
+# Authelia Configuration - Production Environment
+# Documentation: https://www.authelia.com/configuration/prologue/introduction/
+
+server:
+  host: 0.0.0.0
+  port: 9091
+  path: ""
+  read_buffer_size: 4096
+  write_buffer_size: 4096
+
+log:
+  level: info
+  format: json
+  file_path: /data/authelia.log
+
+theme: auto
+
+totp:
+  issuer: authelia
+  period: 30
+  skew: 1
+
+webauthn:
+  disable: false
+  display_name: Authelia
+  attestation_conveyance_preference: indirect
+  user_verification: preferred
+  timeout: 60s
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2id
+      iterations: 3
+      memory: 65536
+      parallelism: 4
+      key_length: 32
+      salt_length: 16
+
+access_control:
+  default_policy: deny
+  rules:
+    # Authelia portal - public access to verification endpoints
+    - domain:
+        - "authelia.{{DOMAIN}}"
+      policy: bypass
+      resources:
+        - "^/api/verify.*$"
+        - "^/api/authz/.*$"
+
+    # Traefik dashboard - require 2FA
+    - domain:
+        - "traefik.{{DOMAIN}}"
+      policy: two_factor
+
+identity_validation:
+  reset_password:
+    jwt_secret: fe8504e652618472440504b2ddab510873c475b7bf090c1ff458b74720808116874bad2b31ec499e1f354d88121ac936ef6c940747eb2c1ec5dd48da1cd5097a
+
+session:
+  secret: fe8504e652618472440504b2ddab510873c475b7bf090c1ff458b74720808116874bad2b31ec499e1f354d88121ac936ef6c940747eb2c1ec5dd48da1cd5097a
+  cookies:
+    - domain: "{{DOMAIN}}"
+      authelia_url: "https://authelia.{{DOMAIN}}"
+  same_site: lax
+  expiration: 12h
+  inactivity: 30m
+  remember_me: 30d
+
+regulation:
+  max_retries: 5
+  find_time: 10m
+  ban_time: 30m
+
+storage:
+  encryption_key: 958cc9cc0bb39cc545fe5df6f1778a5b0c9be564240af1e337d93053a5b6d086026acbc677e4c11b54ae1e31c85ed7b9f0427dbb868d2e792290ae86d95a0431
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  smtp:
+    host: "{{SMTP_HOST}}"
+    port: "{{SMTP_PORT}}"
+    username: "{{SMTP_USERNAME}}"
+    password: "{{SMTP_PASSWORD}}"
+    sender: "Authelia <{{SMTP_FROM}}>"
+    subject: "[Authelia] {title}"
+    startup_check_address: "{{ADMIN_EMAIL}}"
+    disable_require_tls: false
+    disable_html_emails: false
+    tls:
+      skip_verify: false

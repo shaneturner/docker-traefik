@@ -139,13 +139,33 @@ else
     docker network create traefik
 fi
 
+# 11. Switch Authelia to production configuration
+echo ""
+echo "Configuring Authelia for production..."
+sed -i 's/^      - \.\/authelia\/config\/configuration-local\.yml:\/config\/configuration\.yml:ro$/      # - .\/authelia\/config\/configuration-local.yml:\/config\/configuration.yml:ro/' "$COMPOSE_FILE"
+sed -i 's/^      # - \.\/authelia\/config\/configuration-prod\.yml:\/config\/configuration\.yml:ro  # Uncomment for production$/      - .\/authelia\/config\/configuration-prod.yml:\/config\/configuration.yml:ro  # Uncomment for production/' "$COMPOSE_FILE"
+
+# 12. Uncomment Authelia SMTP environment variables
+sed -i 's/^        # - SMTP_HOST=\${SMTP_HOST}$/        - SMTP_HOST=\${SMTP_HOST}/' "$COMPOSE_FILE"
+sed -i 's/^        # - SMTP_PORT=\${SMTP_PORT}$/        - SMTP_PORT=\${SMTP_PORT}/' "$COMPOSE_FILE"
+sed -i 's/^        # - SMTP_USERNAME=\${SMTP_USERNAME}$/        - SMTP_USERNAME=\${SMTP_USERNAME}/' "$COMPOSE_FILE"
+sed -i 's/^        # - SMTP_PASSWORD=\${SMTP_PASSWORD}$/        - SMTP_PASSWORD=\${SMTP_PASSWORD}/' "$COMPOSE_FILE"
+sed -i 's/^        # - SMTP_FROM=\${SMTP_FROM}$/        - SMTP_FROM=\${SMTP_FROM}/' "$COMPOSE_FILE"
+sed -i 's/^        # - ADMIN_EMAIL=\${ADMIN_EMAIL}$/        - ADMIN_EMAIL=\${ADMIN_EMAIL}/' "$COMPOSE_FILE"
+sed -i 's/^        # - DOMAIN=\${DOMAIN}$/        - DOMAIN=\${DOMAIN}/' "$COMPOSE_FILE"
+
 echo ""
 echo "=== Production Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "1. Edit .env and set your actual DOMAIN and CF_DNS_API_TOKEN values"
+echo "1. Edit .env and set your actual values:"
+echo "   - DOMAIN=your-domain.com"
+echo "   - CF_DNS_API_TOKEN=your_actual_token"
+echo "   - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD (for Authelia email notifications)"
+echo "   - SMTP_FROM and ADMIN_EMAIL"
 echo "2. Ensure config/traefik-prod.yaml exists and is properly configured"
-echo "3. Run: docker compose up -d"
+echo "3. Ensure Authelia is initialized: ./setup-authelia.sh"
+echo "4. Run: docker compose up -d"
 echo ""
 echo "Backup saved at: $BACKUP_FILE"
 echo "To revert: cp $BACKUP_FILE $COMPOSE_FILE"

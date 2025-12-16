@@ -54,12 +54,29 @@ else
     docker network create traefik
 fi
 
+# 8. Switch Authelia to local configuration
+echo ""
+echo "Configuring Authelia for local development..."
+sed -i 's/^      # - \.\/authelia\/config\/configuration-local\.yml:\/config\/configuration\.yml:ro$/      - .\/authelia\/config\/configuration-local.yml:\/config\/configuration.yml:ro/' "$COMPOSE_FILE"
+sed -i 's/^      - \.\/authelia\/config\/configuration-prod\.yml:\/config\/configuration\.yml:ro  # Uncomment for production$/      # - .\/authelia\/config\/configuration-prod.yml:\/config\/configuration.yml:ro  # Uncomment for production/' "$COMPOSE_FILE"
+
+# 9. Comment out Authelia SMTP environment variables
+sed -i 's/^        - SMTP_HOST=\${SMTP_HOST}$/        # - SMTP_HOST=\${SMTP_HOST}/' "$COMPOSE_FILE"
+sed -i 's/^        - SMTP_PORT=\${SMTP_PORT}$/        # - SMTP_PORT=\${SMTP_PORT}/' "$COMPOSE_FILE"
+sed -i 's/^        - SMTP_USERNAME=\${SMTP_USERNAME}$/        # - SMTP_USERNAME=\${SMTP_USERNAME}/' "$COMPOSE_FILE"
+sed -i 's/^        - SMTP_PASSWORD=\${SMTP_PASSWORD}$/        # - SMTP_PASSWORD=\${SMTP_PASSWORD}/' "$COMPOSE_FILE"
+sed -i 's/^        - SMTP_FROM=\${SMTP_FROM}$/        # - SMTP_FROM=\${SMTP_FROM}/' "$COMPOSE_FILE"
+sed -i 's/^        - ADMIN_EMAIL=\${ADMIN_EMAIL}$/        # - ADMIN_EMAIL=\${ADMIN_EMAIL}/' "$COMPOSE_FILE"
+sed -i 's/^        - DOMAIN=\${DOMAIN}$/        # - DOMAIN=\${DOMAIN}/' "$COMPOSE_FILE"
+
 echo ""
 echo "=== Local Development Setup Complete ==="
 echo ""
 echo "Next steps:"
-echo "1. Run: docker compose up -d"
-echo "2. Access dashboard at: http://traefik.localhost"
+echo "1. Ensure Authelia is initialized: ./setup-authelia.sh"
+echo "2. Run: docker compose up -d"
+echo "3. Access Authelia at: http://authelia.localhost"
+echo "4. Access Traefik dashboard at: http://traefik.localhost (will require Authelia authentication)"
 echo ""
 echo "Backup saved at: $BACKUP_FILE"
 echo "To revert: cp $BACKUP_FILE $COMPOSE_FILE"
