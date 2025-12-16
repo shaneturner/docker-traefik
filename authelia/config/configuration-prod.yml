@@ -42,13 +42,10 @@ authentication_backend:
 access_control:
   default_policy: deny
   rules:
-    # Authelia portal - public access to verification endpoints
+    # Authelia portal - public access (has its own authentication)
     - domain:
         - "authelia.{{DOMAIN}}"
       policy: bypass
-      resources:
-        - "^/api/verify.*$"
-        - "^/api/authz/.*$"
 
     # Traefik dashboard - require 2FA
     - domain:
