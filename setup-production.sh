@@ -163,36 +163,68 @@ if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
     set +a
 
-    # Substitute placeholders in configuration-prod.yml
-    AUTHELIA_CONFIG="${SCRIPT_DIR}/authelia/config/configuration-prod.yml"
-    if [ -f "$AUTHELIA_CONFIG" ]; then
-        echo "Updating $AUTHELIA_CONFIG..."
-        sed -i \
-            -e "s/{{DOMAIN}}/${DOMAIN}/g" \
-            -e "s/{{SMTP_HOST}}/${SMTP_HOST}/g" \
-            -e "s/{{SMTP_PORT}}/${SMTP_PORT}/g" \
-            -e "s/{{SMTP_USERNAME}}/${SMTP_USERNAME}/g" \
-            -e "s/{{SMTP_PASSWORD}}/${SMTP_PASSWORD}/g" \
-            -e "s/{{SMTP_FROM}}/${SMTP_FROM}/g" \
-            -e "s/{{ADMIN_EMAIL}}/${ADMIN_EMAIL}/g" \
-            "$AUTHELIA_CONFIG"
+    # Validate required variables are set
+    MISSING_VARS=()
+    [ -z "$DOMAIN" ] && MISSING_VARS+=("DOMAIN")
+    [ -z "$SMTP_HOST" ] && MISSING_VARS+=("SMTP_HOST")
+    [ -z "$SMTP_PORT" ] && MISSING_VARS+=("SMTP_PORT")
+    [ -z "$SMTP_FROM" ] && MISSING_VARS+=("SMTP_FROM")
+    [ -z "$ADMIN_EMAIL" ] && MISSING_VARS+=("ADMIN_EMAIL")
 
-        # Fix port to be integer (remove quotes if present)
-        sed -i 's/port: "587"/port: 587/' "$AUTHELIA_CONFIG"
-
-        echo "Authelia configuration updated with values from .env"
+    if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+        echo "ERROR: The following required variables are not set in .env:"
+        printf '  - %s\n' "${MISSING_VARS[@]}"
+        echo ""
+        echo "Template placeholders will remain in configuration files."
+        echo "Please edit .env and set all required values, then run this script again."
+        echo ""
+        echo "Note: SMTP_USERNAME and SMTP_PASSWORD are optional (leave empty for no-auth SMTP relays)"
     else
-        echo "WARNING: $AUTHELIA_CONFIG not found"
-    fi
+        # Substitute placeholders in configuration-prod.yml
+        AUTHELIA_CONFIG="${SCRIPT_DIR}/authelia/config/configuration-prod.yml"
+        if [ -f "$AUTHELIA_CONFIG" ]; then
+            echo "Updating $AUTHELIA_CONFIG..."
 
-    # Substitute placeholders in Traefik middleware configuration
-    MIDDLEWARE_CONFIG="${SCRIPT_DIR}/config/conf/authelia-middleware.yaml"
-    if [ -f "$MIDDLEWARE_CONFIG" ]; then
-        echo "Updating $MIDDLEWARE_CONFIG..."
-        sed -i "s/authelia\.example\.com/authelia.${DOMAIN}/g" "$MIDDLEWARE_CONFIG"
-        echo "Traefik middleware configuration updated with values from .env"
-    else
-        echo "WARNING: $MIDDLEWARE_CONFIG not found"
+            # Use environment variable substitution instead of sed for better handling
+            sed -i \
+                -e "s/{{DOMAIN}}/${DOMAIN}/g" \
+                -e "s/{{SMTP_HOST}}/${SMTP_HOST}/g" \
+                -e "s/{{SMTP_PORT}}/${SMTP_PORT}/g" \
+                -e "s/{{SMTP_FROM}}/${SMTP_FROM}/g" \
+                -e "s/{{ADMIN_EMAIL}}/${ADMIN_EMAIL}/g" \
+                "$AUTHELIA_CONFIG"
+
+            # Handle optional SMTP credentials (remove placeholders if not set)
+            if [ -z "$SMTP_USERNAME" ]; then
+                sed -i 's/{{SMTP_USERNAME}}//' "$AUTHELIA_CONFIG"
+            else
+                sed -i "s/{{SMTP_USERNAME}}/${SMTP_USERNAME}/g" "$AUTHELIA_CONFIG"
+            fi
+
+            if [ -z "$SMTP_PASSWORD" ]; then
+                sed -i 's/{{SMTP_PASSWORD}}//' "$AUTHELIA_CONFIG"
+            else
+                sed -i "s/{{SMTP_PASSWORD}}/${SMTP_PASSWORD}/g" "$AUTHELIA_CONFIG"
+            fi
+
+            # Fix port to be integer (remove quotes if present)
+            sed -i 's/port: "587"/port: 587/' "$AUTHELIA_CONFIG"
+            sed -i 's/port: 587/port: 587/' "$AUTHELIA_CONFIG"  # Ensure it's numeric
+
+            echo "Authelia configuration updated with values from .env"
+        else
+            echo "WARNING: $AUTHELIA_CONFIG not found"
+        fi
+
+        # Substitute placeholders in Traefik middleware configuration
+        MIDDLEWARE_CONFIG="${SCRIPT_DIR}/config/conf/authelia-middleware.yaml"
+        if [ -f "$MIDDLEWARE_CONFIG" ]; then
+            echo "Updating $MIDDLEWARE_CONFIG..."
+            sed -i "s/authelia\.example\.com/authelia.${DOMAIN}/g" "$MIDDLEWARE_CONFIG"
+            echo "Traefik middleware configuration updated with values from .env"
+        else
+            echo "WARNING: $MIDDLEWARE_CONFIG not found"
+        fi
     fi
 else
     echo "WARNING: .env file not found. Skipping template substitution."

@@ -147,7 +147,17 @@ After running the script:
    ADMIN_EMAIL=admin@example.com
    ```
 
-2. **Restart services**:
+2. **Re-run setup script** to substitute placeholders with your actual values:
+   ```bash
+   ./setup-production.sh
+   ```
+
+3. **Verify configuration** before deploying:
+   ```bash
+   ./verify-config.sh
+   ```
+
+4. **Deploy services**:
    ```bash
    docker compose down
    docker compose up -d
@@ -161,6 +171,31 @@ To revert to local development configuration:
 ./setup-local.sh
 docker compose up -d
 ```
+
+#### Configuration Verification
+
+Use the verification script to check for common configuration issues before deployment:
+
+```bash
+./verify-config.sh
+```
+
+The script checks for:
+- Missing or unset environment variables in `.env`
+- Unsubstituted template placeholders (e.g., `{{DOMAIN}}`, `{{SMTP_HOST}}`)
+- Docker group ID mismatches that cause socket-proxy permission errors
+- Hardcoded example.com domains in production configs
+- Active configuration files in `compose.yaml`
+- SMTP configuration for Authelia
+- Let's Encrypt `acme.json` file permissions
+- Docker network existence
+- Authelia initialization status
+
+**Exit codes:**
+- `0` - All checks passed or only warnings found
+- `1` - Errors found that must be fixed before deployment
+
+Run this script both **before** deploying to production and **after** making any configuration changes to catch issues early.
 
 #### Manual Setup
 

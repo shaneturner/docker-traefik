@@ -137,6 +137,32 @@ After running, edit `.env` to set your actual values:
 - `DOMAIN` and `CF_DNS_API_TOKEN` (for Traefik)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `ADMIN_EMAIL` (for Authelia)
 
+**Important:** The script validates that all required variables are set before substituting placeholders. If any required variables are missing, it will show an error and skip substitution. After setting values in `.env`, re-run `./setup-production.sh` to complete the substitution.
+
+### Configuration Verification
+
+**Verify Production Configuration:**
+```bash
+./verify-config.sh
+```
+
+This script checks for common configuration issues before deployment:
+- Missing or unset environment variables in `.env`
+- Unsubstituted template placeholders (e.g., `{{DOMAIN}}`, `{{SMTP_HOST}}`)
+- Docker group ID mismatches that cause socket-proxy permission errors
+- Hardcoded example.com domains in production configs
+- Active configuration files in `compose.yaml`
+- SMTP configuration completeness for Authelia
+- Let's Encrypt `acme.json` file permissions (must be 600)
+- Docker network existence
+- Authelia initialization status
+
+**Exit codes:**
+- `0` - All checks passed or only warnings found
+- `1` - Errors found that must be fixed before deployment
+
+**Best practice:** Run `./verify-config.sh` before every production deployment to catch configuration issues early
+
 **Switch to Local:**
 ```bash
 ./setup-local.sh
