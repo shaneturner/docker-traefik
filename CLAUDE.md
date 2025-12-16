@@ -65,6 +65,7 @@ This script creates directories, generates secrets, and prompts for an admin use
 The `setup-production.sh` script automatically switches Authelia to production mode by:
 - Switching from `configuration-local.yml` to `configuration-prod.yml`
 - Enabling SMTP environment variables for email notifications
+- Substituting template placeholders ({{DOMAIN}}, {{SMTP_HOST}}, etc.) with actual values from `.env`
 - Requiring SMTP credentials in `.env` (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM, ADMIN_EMAIL)
 
 **Key features:**
@@ -125,6 +126,8 @@ This script automatically:
 - Enables Cloudflare DNS environment variables
 - Enables Authelia SMTP environment variables
 - Creates `.env` from `.env.example` (if not exists)
+- **Substitutes template placeholders** in `authelia/config/configuration-prod.yml` with values from `.env`
+- **Substitutes template placeholders** in `config/conf/authelia-middleware.yaml` with values from `.env`
 - Creates `letsencrypt/acme.json` with 600 permissions
 - Creates `logs/` directory
 - Verifies `traefik` network exists

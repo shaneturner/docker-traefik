@@ -154,6 +154,51 @@ sed -i 's/^      # - SMTP_FROM=\${SMTP_FROM}$/      - SMTP_FROM=\${SMTP_FROM}/' 
 sed -i 's/^      # - ADMIN_EMAIL=\${ADMIN_EMAIL}$/      - ADMIN_EMAIL=\${ADMIN_EMAIL}/' "$COMPOSE_FILE"
 sed -i 's/^      # - DOMAIN=\${DOMAIN}$/      - DOMAIN=\${DOMAIN}/' "$COMPOSE_FILE"
 
+# 13. Substitute template placeholders in Authelia configuration
+echo ""
+echo "Substituting template placeholders in Authelia configuration..."
+if [ -f "$ENV_FILE" ]; then
+    # Source the .env file to get variable values
+    set -a
+    source "$ENV_FILE"
+    set +a
+
+    # Substitute placeholders in configuration-prod.yml
+    AUTHELIA_CONFIG="${SCRIPT_DIR}/authelia/config/configuration-prod.yml"
+    if [ -f "$AUTHELIA_CONFIG" ]; then
+        echo "Updating $AUTHELIA_CONFIG..."
+        sed -i \
+            -e "s/{{DOMAIN}}/${DOMAIN}/g" \
+            -e "s/{{SMTP_HOST}}/${SMTP_HOST}/g" \
+            -e "s/{{SMTP_PORT}}/${SMTP_PORT}/g" \
+            -e "s/{{SMTP_USERNAME}}/${SMTP_USERNAME}/g" \
+            -e "s/{{SMTP_PASSWORD}}/${SMTP_PASSWORD}/g" \
+            -e "s/{{SMTP_FROM}}/${SMTP_FROM}/g" \
+            -e "s/{{ADMIN_EMAIL}}/${ADMIN_EMAIL}/g" \
+            "$AUTHELIA_CONFIG"
+
+        # Fix port to be integer (remove quotes if present)
+        sed -i 's/port: "587"/port: 587/' "$AUTHELIA_CONFIG"
+
+        echo "Authelia configuration updated with values from .env"
+    else
+        echo "WARNING: $AUTHELIA_CONFIG not found"
+    fi
+
+    # Substitute placeholders in Traefik middleware configuration
+    MIDDLEWARE_CONFIG="${SCRIPT_DIR}/config/conf/authelia-middleware.yaml"
+    if [ -f "$MIDDLEWARE_CONFIG" ]; then
+        echo "Updating $MIDDLEWARE_CONFIG..."
+        sed -i "s/authelia\.example\.com/authelia.${DOMAIN}/g" "$MIDDLEWARE_CONFIG"
+        echo "Traefik middleware configuration updated with values from .env"
+    else
+        echo "WARNING: $MIDDLEWARE_CONFIG not found"
+    fi
+else
+    echo "WARNING: .env file not found. Skipping template substitution."
+    echo "Please run this script again after creating the .env file."
+fi
+
 echo ""
 echo "=== Production Setup Complete ==="
 echo ""
