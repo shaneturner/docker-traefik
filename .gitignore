@@ -11,3 +11,6 @@ logs/*.log
 authelia/config/users_database.yml
 authelia/secrets/
 authelia/data/
+
+# Compose backup files
+compose.yaml.backup*
